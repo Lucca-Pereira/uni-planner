@@ -12,8 +12,8 @@ export default function Sidebar() {
   const NavItem = ({ href, label }: { href: string; label: string }) => (
     <Link
       href={href}
-      className={`block px-3 py-2 rounded hover:bg-gray-800 ${
-        pathname === href ? "font-semibold bg-gray-800" : ""
+      className={`block px-3 py-2 rounded hover:bg-blue-700 ${
+        pathname === href ? "font-semibold bg-blue-800" : ""
       }`}
     >
       {label}
@@ -21,20 +21,22 @@ export default function Sidebar() {
   );
 
   return (
-    <aside className="p-4 border-r border-gray-800 min-h-screen w-56 flex flex-col">
+    <aside className="p-4 border-r border-blue-900 min-h-screen w-56 flex flex-col bg-blue-900 text-white">
       <div className="text-xl font-bold mb-4">Uni Planner</div>
 
       {/* Nav */}
       <nav className="space-y-1">
         <NavItem href="/" label="Planner" />
         <NavItem href="/subjects" label="Subjects" />
+        <NavItem href="/events" label="Upcoming Events" /> {/* ✅ New */}
+        <NavItem href="/settings" label="Settings" /> {/* ✅ New */}
       </nav>
 
       {/* Spacer pushes auth block to bottom */}
       <div className="flex-1" />
 
       {/* Auth block */}
-      <div className="mt-4 border-t border-gray-800 pt-4">
+      <div className="mt-4 border-t border-blue-800 pt-4">
         {status === "loading" ? (
           <div className="text-sm opacity-70">Checking session…</div>
         ) : session?.user ? (
@@ -48,7 +50,7 @@ export default function Sidebar() {
                 className="rounded-full"
               />
             ) : (
-              <div className="w-7 h-7 rounded-full bg-gray-700" />
+              <div className="w-7 h-7 rounded-full bg-blue-700" />
             )}
             <div className="leading-tight">
               <div className="text-sm font-medium truncate max-w-[9rem]">
@@ -67,7 +69,7 @@ export default function Sidebar() {
         {session?.user ? (
           <button
             onClick={() => signOut()}
-            className="w-full px-3 py-2 rounded bg-gray-800 hover:bg-gray-700 text-gray-100 text-sm"
+            className="w-full px-3 py-2 rounded bg-blue-800 hover:bg-blue-700 text-white text-sm"
           >
             Log out
           </button>

@@ -11,13 +11,15 @@ model Subject {
   id     Int     @id @default(autoincrement())
   name   String
   color  String
-  events Event[]   // 👈 one subject can have many events
+  events Event[]
 }
 
 model Event {
-  id        Int     @id @default(autoincrement())
+  id        Int      @id @default(autoincrement())
   title     String
-  date      DateTime
-  subject   Subject @relation(fields: [subjectId], references: [id])
+  start     DateTime
+  end       DateTime
+  type      String
+  subject   Subject  @relation(fields: [subjectId], references: [id])
   subjectId Int
 }

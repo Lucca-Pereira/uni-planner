@@ -3,13 +3,22 @@
 import { useEffect, useState } from "react";
 
 type Subject = { id: number; name: string; color: string };
-type Event = { id: number; title: string; date: string; subject: Subject };
+type Event = {
+  id: number;
+  title: string;
+  start: string;
+  end: string;
+  type: string;
+  subject: Subject;
+};
 
 export default function CalendarPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editTitle, setEditTitle] = useState("");
-  const [editDate, setEditDate] = useState("");
+  const [editStart, setEditStart] = useState("");
+  const [editEnd, setEditEnd] = useState("");
+  const [editType, setEditType] = useState("");
   const [editSubjectId, setEditSubjectId] = useState<number | null>(null);
   const [subjects, setSubjects] = useState<Subject[]>([]);
 
@@ -20,7 +29,7 @@ export default function CalendarPage() {
       .then((data) => setEvents(data));
   }, []);
 
-  // Load subjects for dropdown (needed for editing)
+  // Load subjects for dropdown
   useEffect(() => {
     fetch("/api/subjects")
       .then((res) => res.json())
@@ -37,20 +46,24 @@ export default function CalendarPage() {
   function startEdit(ev: Event) {
     setEditingId(ev.id);
     setEditTitle(ev.title);
-    setEditDate(ev.date.split("T")[0]); // yyyy-mm-dd
+    setEditStart(ev.start.slice(0, 16)); // yyyy-MM-ddTHH:mm
+    setEditEnd(ev.end.slice(0, 16));
+    setEditType(ev.type);
     setEditSubjectId(ev.subject.id);
   }
 
   // Save edit
   async function saveEdit() {
-    if (!editingId || !editTitle.trim() || !editDate || !editSubjectId) return;
+    if (!editingId || !editTitle.trim() || !editStart || !editEnd || !editSubjectId || !editType) return;
 
     const res = await fetch(`/api/events/${editingId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         title: editTitle,
-        date: editDate,
+        start: editStart,
+        end: editEnd,
+        type: editType,
         subjectId: editSubjectId,
       }),
     });
@@ -62,22 +75,24 @@ export default function CalendarPage() {
 
     setEditingId(null);
     setEditTitle("");
-    setEditDate("");
+    setEditStart("");
+    setEditEnd("");
+    setEditType("");
     setEditSubjectId(null);
   }
 
   return (
-    <main className="p-6 max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">📅 Calendar</h1>
+    <main className="p-6 max-w-3xl mx-auto">
+      <h1 className="text-3xl font-bold mb-6 text-center">📅 Calendar</h1>
 
       {events.length === 0 ? (
-        <p>No events yet. Add one from the event form.</p>
+        <p className="text-gray-600 text-center">No events yet. Add one from the planner.</p>
       ) : (
-        <ul className="space-y-3">
+        <ul className="space-y-4">
           {events.map((ev) => (
             <li
               key={ev.id}
-              className="border rounded p-3 flex justify-between items-center"
+              className="bg-gray-100 rounded-xl p-4 shadow-sm flex justify-between items-center"
             >
               {editingId === ev.id ? (
                 <div className="flex flex-col gap-2 flex-1">
@@ -88,16 +103,30 @@ export default function CalendarPage() {
                     className="border p-2 rounded"
                   />
                   <input
-                    type="date"
-                    value={editDate}
-                    onChange={(e) => setEditDate(e.target.value)}
+                    type="datetime-local"
+                    value={editStart}
+                    onChange={(e) => setEditStart(e.target.value)}
+                    className="border p-2 rounded"
+                  />
+                  <input
+                    type="datetime-local"
+                    value={editEnd}
+                    onChange={(e) => setEditEnd(e.target.value)}
                     className="border p-2 rounded"
                   />
                   <select
+                    value={editType}
+                    onChange={(e) => setEditType(e.target.value)}
+                    className="border p-2 rounded"
+                  >
+                    <option value="">Select type</option>
+                    <option value="Class">Class</option>
+                    <option value="Exam">Exam</option>
+                    <option value="Study">Study</option>
+                  </select>
+                  <select
                     value={editSubjectId ?? ""}
-                    onChange={(e) =>
-                      setEditSubjectId(parseInt(e.target.value, 10))
-                    }
+                    onChange={(e) => setEditSubjectId(parseInt(e.target.value, 10))}
                     className="border p-2 rounded"
                   >
                     <option value="">Select subject</option>
@@ -125,10 +154,11 @@ export default function CalendarPage() {
               ) : (
                 <>
                   <div>
-                    <h2 className="font-semibold">{ev.title}</h2>
+                    <h2 className="font-semibold text-gray-900">{ev.title}</h2>
                     <p className="text-sm text-gray-600">
-                      {new Date(ev.date).toLocaleDateString()}
+                      {new Date(ev.start).toLocaleDateString()} ({new Date(ev.start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} – {new Date(ev.end).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })})
                     </p>
+                    <p className="text-sm text-gray-600">Type: {ev.type}</p>
                   </div>
                   <div className="flex gap-2 items-center">
                     <span

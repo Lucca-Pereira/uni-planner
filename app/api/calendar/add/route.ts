@@ -2,43 +2,70 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { calendarClient } from "@/lib/google";
+import prisma from "@/lib/prisma";
 
 export async function POST(req: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session || !(session as any).accessToken) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const accessToken = (session as any).accessToken as string;
-  const calendar = calendarClient(accessToken);
-
-  const body = await req.json();
-  const { title, start, end, type, subject } = body as {
-    title?: string; start?: string; end?: string; type?: string; subject?: string;
-  };
-
-  if (!title || !start || !end || !type || !subject) {
-    return NextResponse.json({ error: "Missing fields" }, { status: 400 });
-  }
-
-  const event = {
-    summary: title,
-    description: `Type:${type} | Subject:${subject}`, // human-friendly in Google Calendar
-    start: { dateTime: start, timeZone: "Europe/Madrid" },
-    end: { dateTime: end, timeZone: "Europe/Madrid" },
-    extendedProperties: { private: { type, subject } }, // machine-friendly
-  } as const;
-
   try {
-    const res = await calendar.events.insert({
+    // ✅ Auth check
+    const session = await getServerSession(authOptions);
+    if (!session || !(session as any).accessToken) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const accessToken = (session as any).accessToken as string;
+    const calendar = calendarClient(accessToken);
+
+    // ✅ Parse body
+    const { title, start, end, type, subjectId } = await req.json();
+
+    if (!title || !start || !end || !type || !subjectId) {
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
+      );
+    }
+
+    // ✅ Get subject from DB
+    const subject = await prisma.subject.findUnique({
+      where: { id: subjectId },
+    });
+    if (!subject) {
+      return NextResponse.json({ error: "Subject not found" }, { status: 404 });
+    }
+
+    // ✅ Store in DB
+    const newEvent = await prisma.event.create({
+      data: {
+        title,
+        start,
+        end,
+        type,
+        subject: { connect: { id: subjectId } },
+      },
+      include: { subject: true },
+    });
+
+    // ✅ Push to Google Calendar
+    const event = {
+      summary: title,
+      description: `Type:${type} | Subject:${subject.name}`,
+      start: { dateTime: start, timeZone: "Europe/Madrid" },
+      end: { dateTime: end, timeZone: "Europe/Madrid" },
+      extendedProperties: {
+        private: { type, subject: subject.name, subjectId: subjectId.toString() },
+      },
+    };
+
+    await calendar.events.insert({
       calendarId: "primary",
       requestBody: event as any,
     });
-    return NextResponse.json(res.data);
+
+    return NextResponse.json(newEvent, { status: 201 });
   } catch (err: any) {
-    console.error("❌ Google Calendar insert error:", err.response?.data || err);
+    console.error("❌ calendar/add error:", err);
     return NextResponse.json(
-      { error: "Failed to add event", details: err.response?.data || err.message },
+      { error: "Failed to add event", details: err.message },
       { status: 500 }
     );
   }
