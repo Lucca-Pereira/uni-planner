@@ -1,0 +1,23 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Subject {
+  id     Int     @id @default(autoincrement())
+  name   String
+  color  String
+  events Event[]   // 👈 one subject can have many events
+}
+
+model Event {
+  id        Int     @id @default(autoincrement())
+  title     String
+  date      DateTime
+  subject   Subject @relation(fields: [subjectId], references: [id])
+  subjectId Int
+}
